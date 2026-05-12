@@ -25,27 +25,23 @@ bar_h = 11.5;
 enc_hole_d = 7.5;
 
 case_min_x = 16;
-case_max_x = 132;
+case_max_x = 134;
 case_min_y = 70;
 case_max_y = 143;
 
 case_width = case_max_x - case_min_x;
 case_length = case_max_y - case_min_y;
-wall_thickness = 3.5;
+wall_thickness = 2;
 
-// --- Z-Axis Hardware Stack (Bottom Up) ---
-// Z=0 is the bottom flat face of both the outer case and the recessed base plate
 base_thickness = 2.0;
 
 dsub_body_thickness = 12.5;
 dsub_clearance_to_floor = 1.0;
 
-// Standoffs now sit on top of the base plate
 standoff_h = dsub_body_thickness + dsub_clearance_to_floor - 0.5;
 standoff_minus_h = 1.0;
 pcb_thickness = 1.6;
 
-// Absolute Z-height of the physical D-Sub center
 dsub_center_offset = -(dsub_body_thickness / 2);
 dsub_z = base_thickness + standoff_h + dsub_center_offset;
 
@@ -59,6 +55,9 @@ dsub_bot_tol = 0.0;
 dsub_wide_side_up = false;
 
 explode_dist = (render_mode == 2) ? 25 : 0;
+
+dsub_bot_left_oversize = 1.0;
+dsub_bot_right_oversize = 2.0;
 
 
 module dsub(sc,sz,dp){
@@ -90,29 +89,24 @@ module oriented_dsub(flip_orientation) {
 module top_hood() {
     translate([0, 0, explode_dist])
     difference() {
-        // Main outer body (Extends all the way down to Z=0)
         translate([case_min_x - wall_thickness, case_min_y - wall_thickness, 0])
         cube([case_width + 2*wall_thickness, case_length + 2*wall_thickness, total_internal_height + wall_thickness]);
 
-        // Inner cavity (Open at the bottom, creating the hood)
         translate([case_min_x, case_min_y, -0.1])
         cube([case_width, case_length, total_internal_height + 0.1]);
 
-        // D-Sub Cutouts (Upper half, cutting out of the wall)
         translate([case_min_x, dsub1_pos[1], dsub_z])
         rotate([0, -90, 0]) oriented_dsub(dsub_wide_side_up);
 
         translate([case_max_x, dsub2_pos[1], dsub_z])
         rotate([0, 90, 0]) oriented_dsub(!dsub_wide_side_up);
 
-        // U-Slots for D-sub insertion (34mm wide to clear the metal flange)
         translate([case_min_x - wall_thickness - 0.1, dsub1_pos[1] - 17, -0.1])
         cube([wall_thickness + 0.2, 34, dsub_z + 0.1]);
 
         translate([case_max_x - 0.1, dsub2_pos[1] - 17, -0.1])
         cube([wall_thickness + 0.2, 34, dsub_z + 0.1]);
 
-        // Roof Cutouts
         roof_z = total_internal_height;
         translate([led1_pos[0], led1_pos[1], roof_z + wall_thickness/2]) cube([disp_w, disp_h, wall_thickness * 3], center=true);
         translate([led2_pos[0], led2_pos[1], roof_z + wall_thickness/2]) cube([disp_w, disp_h, wall_thickness * 3], center=true);
@@ -121,30 +115,24 @@ module top_hood() {
         translate([enc1_pos[0], enc1_pos[1], roof_z]) cylinder(d=enc_hole_d, h=wall_thickness * 3);
         translate([enc2_pos[0], enc2_pos[1], roof_z]) cylinder(d=enc_hole_d, h=wall_thickness * 3);
 
-        // Pry Notch (Cut into the bottom back edge of the hood)
         translate([case_min_x + case_width/2 - 5, case_max_y - 0.1, -0.1])
         cube([10, wall_thickness + 0.2, base_thickness]);
     }
 }
 
 module bottom_plate() {
-    // Flat access plate (Reduced by fit_tolerance to slot inside the hood)
     translate([case_min_x + fit_tolerance, case_min_y + fit_tolerance, 0])
     cube([case_width - 2*fit_tolerance, case_length - 2*fit_tolerance, base_thickness]);
 
-    // Upward filler tabs that plug the U-slots and cradle the D-Subs
     difference() {
         union() {
-            // Left Tab (Overlaps plate by 0.1 for perfect union)
             translate([case_min_x - wall_thickness, dsub1_pos[1] - 17 + fit_tolerance, 0])
-            cube([wall_thickness + fit_tolerance + 0.1, 34 - 2*fit_tolerance, dsub_z + dsub_bot_tol]);
+            cube([wall_thickness + fit_tolerance + 0.1 + dsub_bot_left_oversize, 34 - 2*fit_tolerance, dsub_z + dsub_bot_tol]);
 
-            // Right Tab
-            translate([case_max_x - fit_tolerance - 0.1, dsub2_pos[1] - 17 + fit_tolerance, 0])
-            cube([wall_thickness + fit_tolerance + 0.1, 34 - 2*fit_tolerance, dsub_z + dsub_bot_tol]);
+            translate([case_max_x - fit_tolerance - 0.1 - dsub_bot_right_oversize, dsub2_pos[1] - 17 + fit_tolerance, 0])
+            cube([wall_thickness + fit_tolerance + 0.1 + dsub_bot_right_oversize, 34 - 2*fit_tolerance, dsub_z + dsub_bot_tol]);
         }
 
-        // Subtract the D-Sub shapes from the top of the tabs
         translate([case_min_x, dsub1_pos[1], dsub_z]) rotate([0, -90, 0]) oriented_dsub(dsub_wide_side_up);
         translate([case_max_x, dsub2_pos[1], dsub_z]) rotate([0, 90, 0]) oriented_dsub(!dsub_wide_side_up);
     }
@@ -162,11 +150,10 @@ module standoff(pos) {
     translate([pos[0], pos[1], base_thickness])
     difference() {
         cylinder(d=6, h=standoff_h-standoff_minus_h);
-        translate([0,0,1]) cylinder(d=2.2, h=standoff_h); // Hole does not pierce the bottom face
+        translate([0,0,1]) cylinder(d=2.2, h=standoff_h);
     }
 }
 
-// --- Render Logic ---
 if (render_mode == 0 || render_mode == 2) {
     color("DarkSlateGray") bottom_plate();
 }
