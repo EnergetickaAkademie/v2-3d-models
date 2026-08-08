@@ -3,14 +3,15 @@ $fn = 60;
 // --- Customization ---
 render_mode = 2; // [0:Base Tray, 1:Snap Lid, 2:Both (Exploded), 3:2D Paper Template]
 
-enable_usb_out_1 = true; // Left output USB-C
-enable_usb_out_2 = true; // Middle output USB-C
-enable_usb_out_3 = true; // Right output USB-C
-enable_gpio_port = false; // GPIO header slot on the top right
-enable_prog_port = false; // Mainboard programming USB-C (USB-IN) on the bottom
-enable_status_led = true; // NeoPixel indent in the lid
+enable_usb_out_1 = true;
+enable_usb_out_2 = true;
+enable_usb_out_3 = true;
+enable_gpio_port = false;
+enable_prog_port = false;
+enable_status_led = true;
 
-led_pos = [75.0, 115.0]; // X, Y position for the NeoPixel LED indent
+led_pos = [-40.0, 112.5];
+ch224k_slot_depth = 1.0;
 
 // --- Case Limits ---
 case_min_x = -55.00; 
@@ -29,18 +30,13 @@ explode_dist = (render_mode == 2) ? 30 : 0;
 insert_hole_d = 2.5; 
 
 // --- Top Wall Recess Parameters ---
-recess_x = 5.0;
+recess_x = 7.0;
 recess_w = 45.0; 
 recess_y = 146.07; 
 recess_wall_thickness = 1.0; 
 
-// --- Left Wall Recess Parameters ---
-left_recess_depth = 1.0; 
-left_recess_h = 20.0;
-left_recess_y = 102.34; 
-
 // --- Heights ---
-dsub_z = 8.75; 
+dsub_z = 6.75;
 mb_standoff_h = 12.0;
 db_standoff_h = 4.0;
 
@@ -49,13 +45,19 @@ ch_usb_z = base_thickness + db_standoff_h + 3.2;
 
 // --- Component Coordinates ---
 h_mb = [
-    [40.39, 80.39],
-    [67.18, 94.62],
-    [91.69, 138.94],
-    [52.96, 139.07]
+    [41.39, 80.39],
+    [68.18, 94.62],
+    [92.69, 138.94],
+    [53.96, 139.07]
 ];
-usb_out_x = [13.34, 28.34, 43.34];
-prog_usb_x = 59.56;
+
+h_mb_supports = [
+    [32.0, 110.0],
+    [12.0, 125.0]
+];
+
+usb_out_x = [14.34, 29.34, 44.34];
+prog_usb_x = 60.56;
 dsub_y = 96.77; 
 
 ch224k_pos = [-53, 119.34]; 
@@ -84,17 +86,54 @@ hook_protrusion = 1.0;
 tab_x1 = -20.0; 
 tab_x2 = 75.0;  
 
+// --- Connection Mechanisms ---
+module battery_box_receiver_cutout() {
+    cut_z = total_internal_height + base_thickness + 2.0; 
+    tol = 0.3;
+    base_x = case_min_x - wall_thickness;
+    base_y = case_min_y - wall_thickness;
+    
+    // Front Receiver (Shifted Z to 2.0 to create the bottom endstop)
+    translate([base_x - 4.1, base_y + 8.0 - tol - 0.25, 2.0]) 
+    cube([2.1 + tol, 2.5 + 2*tol, cut_z - 2.0]); 
+    
+    translate([base_x - 2.0 - tol, base_y + 5.0 - tol - 0.5, 2.0]) 
+    cube([2.1 + tol, 9.0 + 2*tol, cut_z - 2.0]); 
+
+    // Back Receiver (Shifted Z to 2.0 to create the bottom endstop)
+    translate([base_x - 4.1, base_y + 66.0 - tol - 0.25, 2.0]) 
+    cube([2.1 + tol, 2.5 + 2*tol, cut_z - 2.0]); 
+    
+    translate([base_x - 2.0 - tol, base_y + 63.0 - tol - 0.5, 2.0]) 
+    cube([2.1 + tol, 9.0 + 2*tol, cut_z - 2.0]); 
+}
+
 // --- 2D Case Profiles ---
 module outer_profile() {
+    difference() {
+        union() {
+            translate([case_min_x - wall_thickness, case_min_y - wall_thickness])
+            square([case_width + 2*wall_thickness, case_length + 2*wall_thickness]);
+            
+            translate([case_min_x - wall_thickness - 4.0, case_min_y - wall_thickness + 3.0])
+            square([4.0, 12.0]);
+            
+            translate([case_min_x - wall_thickness - 4.0, case_min_y - wall_thickness + 61.0])
+            square([4.0, 12.0]);
+        }
+        
+        translate([recess_x, recess_y - (wall_thickness - recess_wall_thickness)])
+        square([recess_w, 50]);
+    }
+}
+
+module lid_outer_profile() {
     difference() {
         translate([case_min_x - wall_thickness, case_min_y - wall_thickness])
         square([case_width + 2*wall_thickness, case_length + 2*wall_thickness]);
         
         translate([recess_x, recess_y - (wall_thickness - recess_wall_thickness)])
         square([recess_w, 50]);
-
-        translate([case_min_x - wall_thickness, left_recess_y])
-        square([left_recess_depth, left_recess_h]);
     }
 }
 
@@ -147,26 +186,28 @@ module base_tray() {
             translate([0, 0, base_thickness])
             linear_extrude(total_internal_height + 1) inner_profile();
 
-            if (enable_usb_out_1) translate([usb_out_x[0], recess_y - 1, mb_usb_z]) rotate([-90, 0, 0]) pill(11.0, 5.0, 20);
-            if (enable_usb_out_2) translate([usb_out_x[1], recess_y - 1, mb_usb_z]) rotate([-90, 0, 0]) pill(11.0, 5.0, 20);
-            if (enable_usb_out_3) translate([usb_out_x[2], recess_y - 1, mb_usb_z]) rotate([-90, 0, 0]) pill(11.0, 5.0, 20);
+            battery_box_receiver_cutout();
+
+            if (enable_usb_out_1) translate([usb_out_x[0], recess_y - 1, mb_usb_z]) rotate([-90, 0, 0]) pill(9.5, 3.5, 20);
+            if (enable_usb_out_2) translate([usb_out_x[1], recess_y - 1, mb_usb_z]) rotate([-90, 0, 0]) pill(9.5, 3.5, 20);
+            if (enable_usb_out_3) translate([usb_out_x[2], recess_y - 1, mb_usb_z]) rotate([-90, 0, 0]) pill(9.5, 3.5, 20);
 
             if (enable_gpio_port) {
-                translate([76.0, case_max_y, base_thickness + mb_standoff_h + 3.0]) 
+                translate([77.0, case_max_y, base_thickness + mb_standoff_h + 3.0]) 
                 cube([30, 10, 8], center=true);
             }
 
             if (enable_prog_port) {
                 translate([prog_usb_x, case_min_y + 1, mb_usb_z]) 
-                rotate([90, 0, 0]) pill(11.0, 5.0, 20);
+                rotate([90, 0, 0]) pill(9.5, 3.5, 20);
             }
 
             ch_usb_y = ch224k_pos[1] - 7;
             translate([case_min_x, ch_usb_y, ch_usb_z]) 
-            rotate([90, 0, 90]) pill(11.0, 5.0, 15);
+            rotate([90, 0, 90]) pill(9.5, 3.5, 15);
 
-            translate([case_min_x - 0.4, ch_usb_y, base_thickness + db_standoff_h + 0.6]) 
-            cube([0.8, 20, 1.2], center=true);
+            translate([case_min_x - (ch224k_slot_depth / 2), ch_usb_y, base_thickness + db_standoff_h + 1.0]) 
+            cube([ch224k_slot_depth, 20, 4.0], center=true);
 
             translate([case_max_x, dsub_y, dsub_z]) 
             rotate([0, -90, 0]) dsub_cutout();
@@ -203,6 +244,11 @@ module base_tray() {
         for (p = h_ch224k) insert_standoff(p, db_standoff_h);
         for (p = h_xl1) insert_standoff(p, db_standoff_h);
         for (p = h_xl2) insert_standoff(p, db_standoff_h);
+        
+        for (p = h_mb_supports) {
+            translate([p[0], p[1], base_thickness])
+            cylinder(d=5.5, h=mb_standoff_h);
+        }
     }
 }
 
@@ -210,7 +256,7 @@ module snap_lid() {
     translate([0, 0, base_thickness + total_internal_height + explode_dist])
     difference() {
         union() {
-            linear_extrude(wall_thickness) outer_profile();
+            linear_extrude(wall_thickness) lid_outer_profile();
 
             translate([0, 0, -5])
             linear_extrude(5)
@@ -232,7 +278,6 @@ module snap_lid() {
                 }
             }
 
-            // --- INTERNAL CLAMPING PILLARS ---
             u_slot_w = 12.0;
             mb_tab_drop = total_internal_height + base_thickness - mb_usb_z;
             clamp_depth = 4.0;
@@ -276,10 +321,12 @@ module snap_lid() {
         translate([case_min_x, ch_usb_y, ch_tab_z_local]) 
         rotate([90, 0, 90]) pill(9.5, 3.5, 20);
 
-        // Status LED indent (cuts 1.6mm from the inside, leaving 0.4mm exterior roof)
         if (enable_status_led) {
-            translate([led_pos[0], led_pos[1], 0]) 
-            cube([6.0, 6.0, 3.2], center=true); 
+            translate([led_pos[0], led_pos[1], 0])
+			union(){
+				cube([6.0, 6.0, 3.2], center=true);
+				cylinder(h=2, d=10, center=true);
+			}
         }
     }
 }
