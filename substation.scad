@@ -18,11 +18,13 @@ h4 = [10.29, 93.85];
 board_center_x = (h1[0] + h2[0] + h3[0] + h4[0]) / 4;
 board_center_y = (h1[1] + h2[1] + h3[1] + h4[1]) / 4;
 
-case_width = board_w + board_clearance;
+front_wall_inset = 1.0;
+
+case_width = board_w + board_clearance - front_wall_inset;
 case_length = board_h + board_clearance;
 
-case_min_x = board_center_x - (case_width / 2);
-case_max_x = board_center_x + (case_width / 2);
+case_min_x = board_center_x - ((board_w + board_clearance) / 2) + front_wall_inset;
+case_max_x = board_center_x + ((board_w + board_clearance) / 2);
 case_min_y = board_center_y - (case_length / 2);
 case_max_y = board_center_y + (case_length / 2);
 
